@@ -188,17 +188,20 @@ button[disabled]{opacity:.35;cursor:default}
 .pw-row{display:flex;align-items:center;gap:10px}
 .pw-row input{flex:1;border:0;background:none;font:inherit;color:var(--label);padding:4px 0;outline:none}
 .eye{background:none;color:var(--blue);font-size:14px;font-weight:600;padding:4px 0;box-shadow:none;flex:0 0 auto}
-.swap-box{margin-top:22px;padding-top:16px;border-top:.5px solid var(--sep);text-align:center}
-.swap-box p{margin:0 0 10px;font-size:14px;color:var(--label2)}
-.swap-box .ghost{border:1.5px solid var(--blue);box-shadow:none}
 
 /* password e cambio modalità */
 .pass-row{display:flex;align-items:center;gap:10px}
 .pass-row input{flex:1}
 .eye{background:none;color:var(--blue);font-size:14px;font-weight:600;padding:4px 0;box-shadow:none;border-radius:0}
-.mode-reg #auth-title::after{content:"";}
 .mode-reg .form{border-top:3px solid var(--green)}
 .mode-reg .finish{background:var(--green)}
+
+.swap{display:block;width:100%;margin:6px 0 0;padding:14px 12px;border:0;box-shadow:none;
+  background:none;color:var(--blue);font-weight:600;font-size:15px;text-align:center}
+.swap:hover{opacity:.7}
+
+[hidden]{display:none !important}
+
 
 </style>
 </head>
@@ -220,13 +223,14 @@ button[disabled]{opacity:.35;cursor:default}
     <p class="auth-intro" id="auth-intro">Entra con il tuo nome utente per ritrovare i progressi su qualsiasi dispositivo.</p>
     <div class="form">
       <label class="field"><span>Nome utente</span><input id="in-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="es. Leric2002"></label>
+      <label class="field" id="f-mail" hidden><span>Email (facoltativa)</span><input id="in-mail" type="email" autocomplete="email" placeholder="serve solo per recuperare la password"></label>
       <div class="field pw"><label for="in-pass"><span>Password</span></label>
-        <div class="pw-row"><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 6 caratteri"><button type="button" id="pw-eye" class="eye" aria-label="Mostra la password">Mostra</button></div>
+        <div class="pw-row"><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 4 caratteri"><button type="button" id="pass-eye" class="eye" aria-label="Mostra la password">Mostra</button></div>
       </div>
       <p id="auth-err" class="auth-err" hidden></p>
       <button id="auth-go" class="finish">Accedi</button>
-      <div class="swap-box"><p id="swap-q">Non hai ancora un account?</p><button id="auth-swap" class="ghost wide">Registrati</button></div>
-      <p class="linkish">Se dimentichi la password chiedila a Leric.</p>
+      <button id="auth-swap" class="swap">Non hai un account? Registrati</button>
+      <button id="auth-reset" class="linkish">Password dimenticata</button>
     </div>
   </section>
 
@@ -600,8 +604,10 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     err: document.getElementById("auth-err"),
     go: document.getElementById("auth-go"),
     swap: document.getElementById("auth-swap"),
-    swapQ: document.getElementById("swap-q"),
-    eye: document.getElementById("pw-eye")
+    fMail: document.getElementById("f-mail"),
+    mail: document.getElementById("in-mail"),
+    reset: document.getElementById("auth-reset"),
+    eye: document.getElementById("pass-eye")
   };
 
   function authError(msg) {
@@ -613,13 +619,15 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     var reg = authMode === "registrazione";
     a.title.textContent = reg ? "Crea il tuo account" : "Accedi";
     a.intro.textContent = reg
-      ? "Scegli un nome utente e una password. I risultati restano legati al tuo account."
+      ? "Scegli un nome utente e una password. L'email è facoltativa e serve solo a recuperare la password."
       : "Entra con il tuo nome utente per ritrovare i progressi su qualsiasi dispositivo.";
     a.go.textContent = reg ? "Crea account" : "Accedi";
-    a.swap.textContent = reg ? "Accedi" : "Registrati";
-    a.swapQ.textContent = reg ? "Hai già un account?" : "Non hai ancora un account?";
-    a.pass.placeholder = reg ? "Almeno 6 caratteri" : "La tua password";
+    a.swap.textContent = reg ? "Hai già un account? Accedi" : "Non hai un account? Registrati";
+    a.pass.placeholder = reg ? "Almeno 4 caratteri" : "La tua password";
     a.pass.autocomplete = reg ? "new-password" : "current-password";
+    a.fMail.hidden = !reg;
+    a.reset.hidden = reg;
+    if (!reg) a.mail.value = "";
     authError("");
   }
 
@@ -637,9 +645,19 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
   });
 
   a.go.addEventListener("click", doAuth);
-  [a.user, a.pass].forEach(function (i) {
+  [a.user, a.mail, a.pass].forEach(function (i) {
     i.addEventListener("keydown", function (e) { if (e.key === "Enter") doAuth(); });
   });
+
+  function emailDiServizio(u) { return u + "@quizvds.local"; }
+
+  function trovaEmail(u) {
+    return sb.from("utenti").select("email").eq("username", u).maybeSingle()
+      .then(function (r) {
+        return (r.data && r.data.email) ? r.data.email : emailDiServizio(u);
+      })
+      .catch(function () { return emailDiServizio(u); });
+  }
 
   function doAuth() {
     var u = a.user.value.trim().toLowerCase().replace(/\s+/g, "");
@@ -648,39 +666,60 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     if (u.length < 3) { authError("Il nome utente deve avere almeno 3 caratteri."); return; }
     if (!/^[a-z0-9._-]+$/.test(u)) { authError("Il nome utente può contenere solo lettere, numeri, punto, trattino e trattino basso."); return; }
     if (!pass) { authError("Scrivi la password."); return; }
-    if (authMode === "registrazione" && pass.length < 6) { authError("La password deve avere almeno 6 caratteri."); return; }
-    var email = u + "@quizvds.local";
     a.go.disabled = true;
     authError("");
+
     if (authMode === "registrazione") {
-      var nome = u;
-      sb.auth.signUp({ email: email, password: pass, options: { data: { nome: nome, username: u } } })
+      if (pass.length < 4) { authError("La password deve avere almeno 4 caratteri."); a.go.disabled = false; return; }
+      var mail = a.mail.value.trim().toLowerCase();
+      if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+        authError("L'indirizzo email non sembra valido. Puoi anche lasciarlo vuoto.");
+        a.go.disabled = false; return;
+      }
+      var emailAuth = mail || emailDiServizio(u);
+      sb.auth.signUp({ email: emailAuth, password: pass, options: { data: { nome: u, username: u } } })
         .then(function (r) {
           a.go.disabled = false;
           if (r.error) { authError(traduci(r.error.message)); return; }
+          sb.from("utenti").insert({ username: u, email: emailAuth }).then(function () {});
           if (!r.data.session) {
             authError("Account creato. Ora premi Accedi.");
             authMode = "login"; paintAuthMode();
             return;
           }
-          sb.from("profili").insert({ user_id: r.data.user.id, nome: nome }).then(function () {});
-          onLogin(r.data.user, nome);
+          onLogin(r.data.user, u);
         });
-    } else {
-      sb.auth.signInWithPassword({ email: email, password: pass })
-        .then(function (r) {
-          a.go.disabled = false;
-          if (r.error) { authError(traduci(r.error.message)); return; }
-          onLogin(r.data.user, null);
-        });
+      return;
     }
+
+    trovaEmail(u).then(function (email) {
+      sb.auth.signInWithPassword({ email: email, password: pass }).then(function (r) {
+        a.go.disabled = false;
+        if (r.error) { authError(traduci(r.error.message)); return; }
+        onLogin(r.data.user, null);
+      });
+    });
   }
+
+  a.reset.addEventListener("click", function () {
+    var u = a.user.value.trim().toLowerCase().replace(/\s+/g, "");
+    if (!u) { authError("Scrivi il tuo nome utente, poi premi di nuovo."); return; }
+    trovaEmail(u).then(function (email) {
+      if (/@quizvds\.local$/.test(email)) {
+        authError("Non hai un'email collegata: chiedi a Leric di reimpostare la password.");
+        return;
+      }
+      sb.auth.resetPasswordForEmail(email).then(function () {
+        authError("Ti abbiamo inviato un link per reimpostare la password.");
+      });
+    });
+  });
 
   function traduci(m) {
     m = String(m);
     if (/Invalid login/i.test(m)) return "Nome utente o password non corretti.";
     if (/already registered|already exists/i.test(m)) return "Questo nome utente è già preso: scegline un altro.";
-    if (/at least 6/i.test(m)) return "La password deve avere almeno 6 caratteri.";
+    if (/at least (\d+)/i.test(m)) return "La password è troppo corta.";
     if (/valid email/i.test(m)) return "Il nome utente contiene caratteri non ammessi.";
     return m;
   }
