@@ -732,7 +732,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
         authError("Non hai un'email collegata: chiedi a Leric di reimpostare la password.");
         return;
       }
-      sb.auth.resetPasswordForEmail(email).then(function () {
+      sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }).then(function () {
         authOk("Ti abbiamo inviato un link per reimpostare la password. Controlla la posta.");
       });
     });
