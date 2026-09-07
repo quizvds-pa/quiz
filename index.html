@@ -235,6 +235,20 @@ button[disabled]{opacity:.35;cursor:default}
     </div>
   </section>
 
+
+  <!-- NUOVA PASSWORD (arrivo dal link via email) -->
+  <section id="reset" hidden>
+    <h1>Scegli una nuova password</h1>
+    <p class="auth-intro">Sei arrivato dal link che ti abbiamo inviato. Imposta la password che userai d'ora in poi.</p>
+    <div class="form">
+      <div class="field pw"><label for="in-new"><span>Nuova password</span></label>
+        <div class="pw-row"><input id="in-new" type="password" autocomplete="new-password" placeholder="Almeno 6 caratteri"><button type="button" id="new-eye" class="eye">Mostra</button></div>
+      </div>
+      <p id="reset-err" class="auth-err" hidden></p>
+      <button id="reset-go" class="finish">Salva la nuova password</button>
+    </div>
+  </section>
+
   <!-- HOME -->
   <section id="home">
     <h1 id="hello">Bentornato</h1>
@@ -343,6 +357,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     hudCount: document.getElementById("hud-count"),
     bar: document.getElementById("bar-fill"),
     auth: document.getElementById("auth"),
+    reset: document.getElementById("reset"),
     hello: document.getElementById("hello"),
     stats: document.getElementById("stats"),
     logout: document.getElementById("logout")
@@ -365,7 +380,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
   }
 
   function show(section) {
-    [el.auth, el.home, el.pick, el.test, el.result].forEach(function (s) { s.hidden = s !== section; });
+    [el.auth, el.reset, el.home, el.pick, el.test, el.result].forEach(function (s) { s.hidden = s !== section; });
     el.quit.hidden = section !== el.test;
     window.scrollTo(0, 0);
   }
@@ -854,9 +869,61 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     return "<div class='stat'><b>" + v + "</b><span>" + l + "</span></div>";
   }
 
+
+  // ---------- nuova password dal link email ----------
+
+  var r = {
+    input: document.getElementById("in-new"),
+    err: document.getElementById("reset-err"),
+    go: document.getElementById("reset-go"),
+    eye: document.getElementById("new-eye")
+  };
+
+  r.eye.addEventListener("click", function () {
+    var mostra = r.input.type === "password";
+    r.input.type = mostra ? "text" : "password";
+    r.eye.textContent = mostra ? "Nascondi" : "Mostra";
+    r.input.focus();
+  });
+
+  function resetMsg(msg, ok) {
+    r.err.textContent = msg;
+    r.err.className = "auth-err" + (ok ? " ok" : "");
+    r.err.hidden = !msg;
+  }
+
+  function salvaNuovaPassword() {
+    var p = r.input.value;
+    if (p.length < 6) { resetMsg("La password deve avere almeno 6 caratteri.", false); return; }
+    r.go.disabled = true;
+    sb.auth.updateUser({ password: p }).then(function (res) {
+      r.go.disabled = false;
+      if (res.error) { resetMsg(traduci(res.error.message), false); return; }
+      resetMsg("Password aggiornata.", true);
+      setTimeout(function () {
+        if (history.replaceState) history.replaceState(null, "", location.pathname);
+        onLogin(res.data.user, null);
+      }, 900);
+    });
+  }
+
+  r.go.addEventListener("click", salvaNuovaPassword);
+  r.input.addEventListener("keydown", function (e) { if (e.key === "Enter") salvaNuovaPassword(); });
+
   function avvia() {
     if (!sb) { show(el.home); return; }
     paintAuthMode();
+
+    var hash = location.hash || "";
+    var daLink = /type=recovery/.test(hash) || /access_token/.test(hash);
+    if (daLink) {
+      sb.auth.onAuthStateChange(function (evento) {
+        if (evento === "PASSWORD_RECOVERY" || evento === "SIGNED_IN") show(el.reset);
+      });
+      show(el.reset);
+      return;
+    }
+
     sb.auth.getSession().then(function (r) {
       var sess = r.data && r.data.session;
       if (sess) {
