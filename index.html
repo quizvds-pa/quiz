@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quiz VDS — attestato di volo da diporto o sportivo</title>
 <meta name="theme-color" content="#F2F2F7">
@@ -898,7 +899,13 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     r.go.disabled = true;
     sb.auth.updateUser({ password: p }).then(function (res) {
       r.go.disabled = false;
-      if (res.error) { resetMsg(traduci(res.error.message), false); return; }
+      if (res.error) {
+        var m = res.error.message || "";
+        resetMsg(/session|Auth session missing|JWT/i.test(m)
+          ? "Il link non è più valido. Torna alla schermata di accesso e richiedine uno nuovo."
+          : traduci(m), false);
+        return;
+      }
       resetMsg("Password aggiornata.", true);
       setTimeout(function () {
         if (history.replaceState) history.replaceState(null, "", location.pathname);
@@ -914,13 +921,41 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     if (!sb) { show(el.home); return; }
     paintAuthMode();
 
+    // Arrivo dal link di reimpostazione: sono supportate tutte le forme
+    // (token nel frammento, token_hash nella query, link gia' verificato).
     var hash = location.hash || "";
-    var daLink = /type=recovery/.test(hash) || /access_token/.test(hash);
-    if (daLink) {
-      sb.auth.onAuthStateChange(function (evento) {
-        if (evento === "PASSWORD_RECOVERY" || evento === "SIGNED_IN") show(el.reset);
-      });
+    var qs = new URLSearchParams(location.search);
+    var frag = new URLSearchParams(hash.replace(/^#/, ""));
+    var tipo = frag.get("type") || qs.get("type");
+    var tokenHash = qs.get("token_hash") || qs.get("token");
+
+    function pulisciUrl() {
+      if (history.replaceState) history.replaceState(null, "", location.pathname);
+    }
+
+    if (tipo === "recovery" || frag.get("access_token")) {
       show(el.reset);
+      resetMsg("", false);
+      if (tokenHash) {
+        sb.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(function (res) {
+          pulisciUrl();
+          if (res.error) resetMsg("Il link non è più valido. Richiedine uno nuovo dalla schermata di accesso.", false);
+        });
+      } else if (frag.get("access_token")) {
+        sb.auth.setSession({
+          access_token: frag.get("access_token"),
+          refresh_token: frag.get("refresh_token")
+        }).then(function (res) {
+          pulisciUrl();
+          if (res.error) resetMsg("Il link non è più valido. Richiedine uno nuovo dalla schermata di accesso.", false);
+        });
+      } else {
+        sb.auth.getSession().then(function (res) {
+          if (!(res.data && res.data.session)) {
+            resetMsg("Il link non è più valido. Richiedine uno nuovo dalla schermata di accesso.", false);
+          }
+        });
+      }
       return;
     }
 
