@@ -225,7 +225,7 @@ button[disabled]{opacity:.35;cursor:default}
       <label class="field"><span>Nome utente</span><input id="in-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="es. Leric2002"></label>
       <label class="field" id="f-mail" hidden><span>Email (facoltativa)</span><input id="in-mail" type="email" autocomplete="email" placeholder="serve solo per recuperare la password"></label>
       <div class="field pw"><label for="in-pass"><span>Password</span></label>
-        <div class="pw-row"><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 4 caratteri"><button type="button" id="pass-eye" class="eye" aria-label="Mostra la password">Mostra</button></div>
+        <div class="pw-row"><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 6 caratteri"><button type="button" id="pass-eye" class="eye" aria-label="Mostra la password">Mostra</button></div>
       </div>
       <p id="auth-err" class="auth-err" hidden></p>
       <button id="auth-go" class="finish">Accedi</button>
@@ -623,7 +623,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
       : "Entra con il tuo nome utente per ritrovare i progressi su qualsiasi dispositivo.";
     a.go.textContent = reg ? "Crea account" : "Accedi";
     a.swap.textContent = reg ? "Hai già un account? Accedi" : "Non hai un account? Registrati";
-    a.pass.placeholder = reg ? "Almeno 4 caratteri" : "La tua password";
+    a.pass.placeholder = reg ? "Almeno 6 caratteri" : "La tua password";
     a.pass.autocomplete = reg ? "new-password" : "current-password";
     a.fMail.hidden = !reg;
     a.reset.hidden = reg;
@@ -670,7 +670,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     authError("");
 
     if (authMode === "registrazione") {
-      if (pass.length < 4) { authError("La password deve avere almeno 4 caratteri."); a.go.disabled = false; return; }
+      if (pass.length < 6) { authError("La password deve avere almeno 6 caratteri."); a.go.disabled = false; return; }
       var mail = a.mail.value.trim().toLowerCase();
       if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
         authError("L'indirizzo email non sembra valido. Puoi anche lasciarlo vuoto.");
@@ -719,7 +719,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     m = String(m);
     if (/Invalid login/i.test(m)) return "Nome utente o password non corretti.";
     if (/already registered|already exists/i.test(m)) return "Questo nome utente è già preso: scegline un altro.";
-    if (/at least (\d+)/i.test(m)) return "La password è troppo corta.";
+    if (/at least (\d+)|too short/i.test(m)) return "La password deve avere almeno 6 caratteri.";
     if (/valid email/i.test(m)) return "Il nome utente contiene caratteri non ammessi.";
     return m;
   }
