@@ -146,6 +146,7 @@ button[disabled]{opacity:.35;cursor:default}
 .linkish{display:block;width:100%;background:none;color:var(--label2);font-weight:400;font-size:14px;
   padding:12px 0 4px;box-shadow:none}
 .auth-err{color:var(--red);font-size:14px;margin:14px 0 0}
+.auth-err.ok{color:var(--green)}
 
 /* progressi */
 .stats{margin-bottom:28px}
@@ -612,6 +613,13 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
 
   function authError(msg) {
     a.err.textContent = msg;
+    a.err.className = "auth-err";
+    a.err.hidden = !msg;
+  }
+
+  function authOk(msg) {
+    a.err.textContent = msg;
+    a.err.className = "auth-err ok";
     a.err.hidden = !msg;
   }
 
@@ -683,7 +691,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
           if (r.error) { authError(traduci(r.error.message)); return; }
           sb.from("utenti").insert({ username: u, email: emailAuth }).then(function () {});
           if (!r.data.session) {
-            authError("Account creato. Ora premi Accedi.");
+            authOk("Account creato. Ora premi Accedi.");
             authMode = "login"; paintAuthMode();
             return;
           }
@@ -710,7 +718,7 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
         return;
       }
       sb.auth.resetPasswordForEmail(email).then(function () {
-        authError("Ti abbiamo inviato un link per reimpostare la password.");
+        authOk("Ti abbiamo inviato un link per reimpostare la password. Controlla la posta.");
       });
     });
   });
