@@ -164,6 +164,42 @@ button[disabled]{opacity:.35;cursor:default}
 .storico-r span{color:var(--label2)}
 #logout{margin-bottom:36px}
 
+/* grafici progressi */
+.card-chart{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;
+  box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.chart-t{margin:0 0 10px;font-size:13px;color:var(--label2)}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.c-line{fill:none;stroke:var(--blue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.c-area{fill:var(--blue);opacity:.10;stroke:none}
+.c-soglia{stroke:var(--label2);stroke-width:1;stroke-dasharray:3 3;opacity:.6}
+.c-lab{font-size:9px;fill:var(--label2)}
+.c-ok{fill:var(--green)}
+.c-ko{fill:var(--red)}
+.bars{display:grid;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:14px}
+.bar-lab{flex:0 0 38%;color:var(--label2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:8px;background:var(--sep);border-radius:100px;overflow:hidden}
+.bar-track .bar-fill{display:block;height:100%;background:var(--red);opacity:.75;border-radius:100px}
+.bar-n{min-width:1.6em;text-align:right;font-variant-numeric:tabular-nums}
+
+/* password e cambio modalità */
+.pw{padding-bottom:10px}
+.pw label{display:block}
+.pw-row{display:flex;align-items:center;gap:10px}
+.pw-row input{flex:1;border:0;background:none;font:inherit;color:var(--label);padding:4px 0;outline:none}
+.eye{background:none;color:var(--blue);font-size:14px;font-weight:600;padding:4px 0;box-shadow:none;flex:0 0 auto}
+.swap-box{margin-top:22px;padding-top:16px;border-top:.5px solid var(--sep);text-align:center}
+.swap-box p{margin:0 0 10px;font-size:14px;color:var(--label2)}
+.swap-box .ghost{border:1.5px solid var(--blue);box-shadow:none}
+
+/* password e cambio modalità */
+.pass-row{display:flex;align-items:center;gap:10px}
+.pass-row input{flex:1}
+.eye{background:none;color:var(--blue);font-size:14px;font-weight:600;padding:4px 0;box-shadow:none;border-radius:0}
+.mode-reg #auth-title::after{content:"";}
+.mode-reg .form{border-top:3px solid var(--green)}
+.mode-reg .finish{background:var(--green)}
+
 </style>
 </head>
 <body>
@@ -184,11 +220,13 @@ button[disabled]{opacity:.35;cursor:default}
     <p class="auth-intro" id="auth-intro">Entra con il tuo nome utente per ritrovare i progressi su qualsiasi dispositivo.</p>
     <div class="form">
       <label class="field"><span>Nome utente</span><input id="in-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="es. Leric2002"></label>
-      <label class="field"><span>Password</span><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 6 caratteri"></label>
+      <div class="field pw"><label for="in-pass"><span>Password</span></label>
+        <div class="pw-row"><input id="in-pass" type="password" autocomplete="current-password" placeholder="Almeno 6 caratteri"><button type="button" id="pw-eye" class="eye" aria-label="Mostra la password">Mostra</button></div>
+      </div>
       <p id="auth-err" class="auth-err" hidden></p>
       <button id="auth-go" class="finish">Accedi</button>
-      <button id="auth-swap" class="ghost wide">Non hai un account? Registrati</button>
-      <p class="linkish">Se dimentichi la password chiedi alla scuola di reimpostarla.</p>
+      <div class="swap-box"><p id="swap-q">Non hai ancora un account?</p><button id="auth-swap" class="ghost wide">Registrati</button></div>
+      <p class="linkish">Se dimentichi la password chiedila a Leric.</p>
     </div>
   </section>
 
@@ -561,7 +599,9 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
     pass: document.getElementById("in-pass"),
     err: document.getElementById("auth-err"),
     go: document.getElementById("auth-go"),
-    swap: document.getElementById("auth-swap")
+    swap: document.getElementById("auth-swap"),
+    swapQ: document.getElementById("swap-q"),
+    eye: document.getElementById("pw-eye")
   };
 
   function authError(msg) {
@@ -576,7 +616,9 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
       ? "Scegli un nome utente e una password. I risultati restano legati al tuo account."
       : "Entra con il tuo nome utente per ritrovare i progressi su qualsiasi dispositivo.";
     a.go.textContent = reg ? "Crea account" : "Accedi";
-    a.swap.textContent = reg ? "Hai già un account? Accedi" : "Non hai un account? Registrati";
+    a.swap.textContent = reg ? "Accedi" : "Registrati";
+    a.swapQ.textContent = reg ? "Hai già un account?" : "Non hai ancora un account?";
+    a.pass.placeholder = reg ? "Almeno 6 caratteri" : "La tua password";
     a.pass.autocomplete = reg ? "new-password" : "current-password";
     authError("");
   }
@@ -584,6 +626,14 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
   a.swap.addEventListener("click", function () {
     authMode = authMode === "login" ? "registrazione" : "login";
     paintAuthMode();
+  });
+
+  a.eye.addEventListener("click", function () {
+    var mostra = a.pass.type === "password";
+    a.pass.type = mostra ? "text" : "password";
+    a.eye.textContent = mostra ? "Nascondi" : "Mostra";
+    a.eye.setAttribute("aria-label", mostra ? "Nascondi la password" : "Mostra la password");
+    a.pass.focus();
   });
 
   a.go.addEventListener("click", doAuth);
@@ -693,10 +743,10 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
         h += statBox(media + "%", "media");
         h += statBox(superati, superati === 1 ? "superato" : "superati");
         h += "</div>";
-        if (deboli.length) {
-          h += "<p class='stat-note'>Materie dove sbagli di più: " +
-               deboli.map(function (p) { return titleCase(PARTS[p]) + " (" + perMateria[p] + ")"; }).join(", ") + ".</p>";
-        }
+
+        h += graficoAndamento(rows);
+        h += graficoMaterie(perMateria);
+
         h += "<div class='storico'>";
         rows.slice(0, 5).forEach(function (x) {
           var ok = x.corrette / x.totale >= SOGLIA;
@@ -709,6 +759,48 @@ window.VDS_DATA = {"parts": {"1": "AERODINAMICA", "2": "METEOROLOGIA", "3": "TEC
         el.stats.innerHTML = h;
         el.stats.hidden = false;
       });
+  }
+
+
+  function graficoAndamento(rows) {
+    var ultimi = rows.slice(0, 12).reverse();
+    if (ultimi.length < 2) return "";
+    var W = 320, H = 120, pad = 18;
+    var passo = ultimi.length > 1 ? (W - pad * 2) / (ultimi.length - 1) : 0;
+    var pts = ultimi.map(function (x, i) {
+      var pct = x.corrette / x.totale;
+      return [pad + i * passo, H - pad - pct * (H - pad * 2)];
+    });
+    var linea = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+    var area = linea + " L" + pts[pts.length - 1][0].toFixed(1) + " " + (H - pad) + " L" + pad + " " + (H - pad) + " Z";
+    var ySoglia = H - pad - SOGLIA * (H - pad * 2);
+
+    var svg = "<svg viewBox='0 0 " + W + " " + H + "' class='chart' role='img' aria-label='Andamento degli ultimi test'>";
+    svg += "<line x1='" + pad + "' y1='" + ySoglia.toFixed(1) + "' x2='" + (W - pad) + "' y2='" + ySoglia.toFixed(1) +
+           "' class='c-soglia'/>";
+    svg += "<text x='" + (W - pad) + "' y='" + (ySoglia - 5).toFixed(1) + "' class='c-lab' text-anchor='end'>70%</text>";
+    svg += "<path d='" + area + "' class='c-area'/><path d='" + linea + "' class='c-line'/>";
+    pts.forEach(function (p, i) {
+      var ok = ultimi[i].corrette / ultimi[i].totale >= SOGLIA;
+      svg += "<circle cx='" + p[0].toFixed(1) + "' cy='" + p[1].toFixed(1) + "' r='3.5' class='" + (ok ? "c-ok" : "c-ko") + "'/>";
+    });
+    svg += "</svg>";
+    return "<div class='card-chart'><p class='chart-t'>Andamento degli ultimi test</p>" + svg + "</div>";
+  }
+
+  function graficoMaterie(perMateria) {
+    var chiavi = Object.keys(perMateria);
+    if (!chiavi.length) return "";
+    var max = Math.max.apply(null, chiavi.map(function (k) { return perMateria[k]; }));
+    chiavi.sort(function (a, b) { return perMateria[b] - perMateria[a]; });
+    var h = "<div class='card-chart'><p class='chart-t'>Errori per materia</p><div class='bars'>";
+    chiavi.forEach(function (k) {
+      var w = Math.round(perMateria[k] / max * 100);
+      h += "<div class='bar-row'><span class='bar-lab'>" + esc(titleCase(PARTS[k])) + "</span>" +
+           "<span class='bar-track'><span class='bar-fill' style='width:" + w + "%'></span></span>" +
+           "<b class='bar-n'>" + perMateria[k] + "</b></div>";
+    });
+    return h + "</div></div>";
   }
 
   function statBox(v, l) {
